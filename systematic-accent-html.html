@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Systematic Accent Colours</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .root { min-height: 100vh; padding: 32px 28px; transition: background 0.3s ease, color 0.3s ease; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .subtitle { font-size: 14px; margin: 0 0 28px; }
+  .bg-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 36px; }
+  .bg-btn { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; cursor: pointer; min-width: 130px; transition: all 0.2s; }
+  .bg-btn .label { font-size: 13px; font-weight: 600; }
+  .bg-btn .hex { font-size: 11px; opacity: 0.7; font-family: monospace; }
+  .bg-btn .check { margin-left: auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 24px; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .swatch { width: 88px; height: 88px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .swatch span { font-size: 13px; font-weight: 600; }
+  .info { text-align: center; }
+  .info .name { font-size: 13px; font-weight: 600; }
+  .contrast-badge { font-size: 10px; margin-top: 4px; padding: 2px 8px; border-radius: 4px; font-weight: 600; display: inline-block; }
+  .tints { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+  .tint-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .tint-row .pct { width: 28px; text-align: right; font-size: 10px; }
+  .tint-dot { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
+  .hex-input { background: none; border: none; outline: none; font-family: monospace; cursor: pointer; padding: 2px 4px; margin: -2px -4px; border-radius: 3px; text-align: left; }
+  .hex-input:hover { background: rgba(128,128,128,0.15); }
+  .hex-input.lg { font-size: 12px; width: 72px; }
+  .hex-input.sm { font-size: 10px; width: 66px; }
+  .footer { margin-top: 40px; padding-top: 20px; font-size: 11px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  .copy-hint { position: absolute; left: 100%; margin-left: 6px; font-size: 9px; font-weight: 600; color: #00b450; white-space: nowrap; animation: fadeIn 0.15s ease; }
+</style>
+</head>
+<body>
+<div class="root" id="root"></div>
+<script>
+const COLORS = [
+  { name: "Navy", hex: "#141446", rgb: [20,20,70], pms: "282 C", cmyk: "100/90/10/65" },
+  { name: "White", hex: "#FFFFFF", rgb: [255,255,255], pms: "\u2014", cmyk: "0/0/0/0" },
+  { name: "Blue", hex: "#193CBE", rgb: [25,60,190], pms: "2728 C", cmyk: "95/72/0/0" },
+  { name: "Cyan", hex: "#009BE6", rgb: [0,155,230], pms: "299 C", cmyk: "80/25/0/0" },
+  { name: "Orange", hex: "#E58401", rgb: [229,132,1], pms: "138 C", cmyk: "0/45/99/6" },
+  { name: "Green", hex: "#B5CC39", rgb: [181,204,57], pms: "584 C", cmyk: "10/0/72/20" },
+];
+const TINTS = [80,60,40,20];
+let bgIdx = 0;
+
+function blend(fg, bg, op) { return fg.map((f,i) => Math.round(f*op + bg[i]*(1-op))); }
+function rgbHex([r,g,b]) { return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0").toUpperCase()).join(""); }
+function lum([r,g,b]) { const c=[r,g,b].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
+function cr(a,b) { const l1=lum(a),l2=lum(b); return ((Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05)).toFixed(1); }
+function txtC(bg) { return lum(bg)>0.35 ? [20,20,70] : [255,255,255]; }
+
+function render() {
+  const bg = COLORS[bgIdx];
+  const txt = txtC(bg.rgb);
+  const txtH = rgbHex(txt);
+  const sub = rgbHex(blend(txt, bg.rgb, 0.5));
+  const brd = rgbHex(blend(txt, bg.rgb, 0.12));
+  const root = document.getElementById("root");
+  root.style.background = bg.hex;
+  root.style.color = txtH;
+
+  const accents = COLORS.filter((_,i)=>i!==bgIdx).map(c=>({
+    ...c,
+    tints: TINTS.map(t=>{ const b=blend(c.rgb,bg.rgb,t/100); return {pct:t,hex:rgbHex(b)}; }),
+    contrast: cr(c.rgb, bg.rgb),
+  }));
+
+  let html = `<div class="wrap">
+    <h1>Accent Colours</h1>
+    <p class="subtitle" style="color:${sub}">Click a colour to set it as background. Click any hex code to select it for copying.</p>
+    <div class="bg-btns">`;
+
+  COLORS.forEach((c,i) => {
+    const active = i === bgIdx;
+    const lbl = rgbHex(txtC(c.rgb));
+    const bdr = c.hex==="#FFFFFF" ? "1px solid #ccc" : "1px solid transparent";
+    const activeBdr = active ? `2px solid ${txtH}` : bdr;
+    const outline = active ? `2px solid ${bg.hex}` : "none";
+    html += `<button class="bg-btn" onclick="bgIdx=${i};render()" style="background:${c.hex};border:${activeBdr};outline:${outline};outline-offset:2px">
+      <span class="label" style="color:${lbl}">${c.name}</span>
+      <span class="hex" style="color:${lbl}">${c.hex}</span>
+      ${active ? `<span class="check" style="color:${lbl}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : ""}
+    </button>`;
+  });
+
+  html += `</div><div class="grid">`;
+
+  accents.forEach(c => {
+    const cBadge = parseFloat(c.contrast)>=4.5 ? rgbHex(blend([0,180,80],bg.rgb,0.8)) : parseFloat(c.contrast)>=3 ? rgbHex(blend([200,160,0],bg.rgb,0.8)) : rgbHex(blend([220,50,50],bg.rgb,0.8));
+    const swBorder = c.hex==="#FFFFFF" ? `border:1px solid ${brd}` : "";
+    html += `<div class="col">
+      <div class="swatch" style="background:${c.hex};${swBorder}">
+        <span style="color:${rgbHex(txtC(c.rgb))}">accent</span>
+      </div>
+      <div class="info">
+        <div class="name">${c.name}</div>
+        <span style="position:relative;display:inline-flex;align-items:center">
+          <input class="hex-input lg" readonly value="${c.hex}" onclick="this.select()" style="color:${sub}">
+        </span>
+        <div class="contrast-badge" style="background:${rgbHex(blend(txt,bg.rgb,0.08))};color:${cBadge}">${c.contrast}:1</div>
+      </div>
+      <div class="tints">`;
+    c.tints.forEach(t => {
+      html += `<div class="tint-row">
+          <span class="pct" style="color:${sub}">${t.pct}%</span>
+          <div class="tint-dot" style="background:${t.hex};border:1px solid ${brd}"></div>
+          <span style="position:relative;display:inline-flex;align-items:center">
+            <input class="hex-input sm" readonly value="${t.hex}" onclick="this.select()" style="color:${sub}">
+          </span>
+        </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  html += `</div>
+    <div class="footer" style="border-top:1px solid ${brd};color:${sub}">
+      <span>Background: ${bg.name} (${bg.hex})</span>
+      <span>Tints calculated as opacity blend over active background</span>
+    </div>
+  </div>`;
+
+  root.innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
